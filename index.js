@@ -32,8 +32,10 @@ async function run() {
         const users_data = database.collection('users_data');
 
         // post all logged in users information
-        app.post('/users', async(req, res) => {
-            
+        app.post('/users', async (req, res) => {
+            const userData = req.body;
+            const result = await users_data.insertOne(userData);
+            res.send(result);
 
         })
 
