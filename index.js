@@ -34,6 +34,11 @@ async function run() {
         // post all logged in users information
         app.post('/users', async (req, res) => {
             const userData = req.body;
+            const query = {email: userData.email}
+            const existUser = await users_data.findOne(query)
+            if(existUser) {
+                return res.send({message: "user already registered"})
+            }
             const result = await users_data.insertOne(userData);
             res.send(result);
 
