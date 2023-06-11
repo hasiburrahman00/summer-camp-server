@@ -54,10 +54,36 @@ async function run() {
         })
 
         // Delete user data: 
-        app.delete('/users/:id', async(req, res) => {
-            const id  = req.params.id;
-            const query = {_id: new ObjectId(id)}
+        app.delete('/users/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
             const result = await users_data.deleteOne(query);
+            res.send(result);
+        })
+
+        // update users data as a admin 
+        app.patch('/users/admin/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    role: 'admin'
+                },
+            };
+            const result = await users_data.updateOne(filter, updateDoc);
+            res.send(result);
+        })
+
+        // update users data as a Instructor 
+        app.patch('/users/instructor/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    role: 'instructor'
+                },
+            };
+            const result = await users_data.updateOne(filter, updateDoc);
             res.send(result);
         })
 
@@ -67,6 +93,7 @@ async function run() {
             const result = await courses.find().toArray();
             res.send(result);
         })
+
 
         // users added cart data : 
         app.post('/carts', async (req, res) => {
