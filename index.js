@@ -46,11 +46,21 @@ async function run() {
             res.send(result);
 
         })
+
         // get all users information:
         app.get('/users', async (req, res) => {
             const result = await users_data.find().toArray();
             res.send(result)
         })
+
+        // Delete user data: 
+        app.delete('/users/:id', async(req, res) => {
+            const id  = req.params.id;
+            const query = {_id: new ObjectId(id)}
+            const result = await users_data.deleteOne(query);
+            res.send(result);
+        })
+
 
         // get all courses data 
         app.get('/courses', async (req, res) => {
@@ -77,7 +87,7 @@ async function run() {
             res.send(result);
         })
 
-        // delte cart item : 
+        // delete cart item : 
         app.delete('/carts/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
