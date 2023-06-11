@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -30,20 +30,55 @@ async function run() {
         // --- All Database and collections ---
         const database = client.db('summer_camp');
         const users_data = database.collection('users_data');
+        const courses = database.collection('courses');
+        const carts = database.collection('cart');
+
 
         // post all logged in users information
         app.post('/users', async (req, res) => {
             const userData = req.body;
-            const query = {email: userData.email}
+            const query = { email: userData.email }
             const existUser = await users_data.findOne(query)
-            if(existUser) {
-                return res.send({message: "user already registered"})
+            if (existUser) {
+                return res.send({ message: "user already registered" })
             }
             const result = await users_data.insertOne(userData);
             res.send(result);
 
         })
 
+        // get all courses data 
+        app.get('/courses', async (req, res) => {
+            const result = await courses.find().toArray();
+            res.send(result);
+        })
+
+        // users added cart data : 
+        app.post('/carts', async (req, res) => {
+            const item = req.body;
+            console.log(item);
+            const result = await carts.insertOne(item);
+            res.send(result);
+        })
+
+        // get carted all data:
+        app.get('/carts', async(req, res) => {
+            const email = req.query.email;
+            if(!email) {
+                res.send([])
+            }
+            const query = {email: email}
+            const result = await carts.find(query).toArray();
+            res.send(result);
+        })
+
+        // delte cart item : 
+        app.delete('/carts/:id', async(req, res) => {
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)}
+            const result = await carts.deleteOne(query);
+            res.send(result);
+        })
 
 
 
