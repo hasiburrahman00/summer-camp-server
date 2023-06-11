@@ -46,6 +46,11 @@ async function run() {
             res.send(result);
 
         })
+        // get all users information:
+        app.get('/users', async (req, res) => {
+            const result = await users_data.find().toArray();
+            res.send(result)
+        })
 
         // get all courses data 
         app.get('/courses', async (req, res) => {
@@ -62,20 +67,20 @@ async function run() {
         })
 
         // get carted all data:
-        app.get('/carts', async(req, res) => {
+        app.get('/carts', async (req, res) => {
             const email = req.query.email;
-            if(!email) {
+            if (!email) {
                 res.send([])
             }
-            const query = {email: email}
+            const query = { email: email }
             const result = await carts.find(query).toArray();
             res.send(result);
         })
 
         // delte cart item : 
-        app.delete('/carts/:id', async(req, res) => {
+        app.delete('/carts/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await carts.deleteOne(query);
             res.send(result);
         })
