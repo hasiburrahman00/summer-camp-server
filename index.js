@@ -118,12 +118,39 @@ async function run() {
             const result = await courses.find().toArray();
             res.send(result);
         })
-        
+
         // Insert new course api : 
-        app.post('/courses', async(req, res) => {
+        app.post('/courses', async (req, res) => {
             const newCourse = req.body;
-            console.log(newCourse);
+            const result = await courses.insertOne(newCourse);
+            res.send(result);
         })
+
+        // manage courses 
+        app.get('/manageCourse', async (req, res) => {
+            // const query = { status: `pending`  };
+            const query = { status: { $in: ['pending', 'Deny'] } };
+            const result = await courses.find(query).toArray();
+            res.send(result);
+        })
+
+        // update course data:
+        app.patch('/courses/:id', async (req, res) => {
+            const id = req.params.id;
+            console.log("course id", id);
+            const feedback = req.body.feedback;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    status: 'Deny',
+                    feedback: feedback
+                },
+            };
+            const result = await courses.updateOne(filter, updateDoc);
+            res.send(result);
+
+        })
+
 
 
         // users added cart data : 
@@ -142,8 +169,8 @@ async function run() {
             }
 
             const decodedEmail = req.decode.email;
-            if(email !== decodedEmail){
-                res.status(403).send({error: true, message: 'Foridden  access'})
+            if (email !== decodedEmail) {
+                res.status(403).send({ error: true, message: 'Foridden  access' })
             }
 
 
