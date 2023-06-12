@@ -10,6 +10,23 @@ const port = process.env.PORT || 5000;
 app.use(cors())
 app.use(express.json());
 
+const varifyJWT = (req, res, next) => {
+    const authorization = req.headers.authorization;
+    if (!authorization) {
+        return res.status(401).send({ error: true, message: 'Unauthorize Access' })
+    }
+    // bearer token 
+    const token = authorization.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decode) => {
+        if (err) {
+            return res.status(401).send({ error: true, message: 'Unauthorize access ' });
+        }
+        req.decode = decode;
+        next();
+    })
+}
+
+
 
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.PASSWORD}@cluster0.vwsfnb9.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -51,7 +68,7 @@ async function run() {
         // jwt token 
         app.post('/jwt', (req, res) => {
             const user = req.body;
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'})
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
             res.send(token);
         })
 
@@ -101,6 +118,12 @@ async function run() {
             const result = await courses.find().toArray();
             res.send(result);
         })
+        
+        // Insert new course api : 
+        app.post('/courses', async(req, res) => {
+            const newCourse = req.body;
+            console.log(newCourse);
+        })
 
 
         // users added cart data : 
@@ -112,11 +135,18 @@ async function run() {
         })
 
         // get carted all data:
-        app.get('/carts', async (req, res) => {
+        app.get('/carts', varifyJWT, async (req, res) => {
             const email = req.query.email;
             if (!email) {
                 res.send([])
             }
+
+            const decodedEmail = req.decode.email;
+            if(email !== decodedEmail){
+                res.status(403).send({error: true, message: 'Foridden  access'})
+            }
+
+
             const query = { email: email }
             const result = await carts.find(query).toArray();
             res.send(result);
