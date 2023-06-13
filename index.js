@@ -1,6 +1,7 @@
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 var jwt = require('jsonwebtoken');
 require('dotenv').config();
 const app = express();
@@ -68,7 +69,7 @@ async function run() {
         // jwt token 
         app.post('/jwt', (req, res) => {
             const user = req.body;
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '10h' })
             res.send(token);
         })
 
@@ -112,11 +113,32 @@ async function run() {
             res.send(result);
         })
 
+        app.get('/users', async (req, res) => {
+            const query = { role: 'instructor' }
+            const result = await users_data.find(query).toArray();
+            res.send(result)
+        })
+
+        // admin check api: 
+        app.get('/users/admin/:email', varifyJWT, async (req, res) => {
+            const email = req.params.email;
+
+            if (req.decode.email !== email) {
+                res.send({ admin: false })
+            }
+
+            const query = { email: email }
+            const user = await users_data.findOne(query);
+            const result = { admin: user.role === 'admin' }
+            res.send(result);
+        })
+
 
         // get all courses data 
         app.get('/courses', async (req, res) => {
             const result = await courses.find().toArray();
-            res.send(result);
+            const approved = result.filter(item => item.status !== 'Deny');
+            res.send(approved);
         })
 
         // Insert new course api : 
@@ -165,12 +187,12 @@ async function run() {
         app.get('/carts', varifyJWT, async (req, res) => {
             const email = req.query.email;
             if (!email) {
-                res.send([])
+                return res.send([]) // add return time: 12.59
             }
 
             const decodedEmail = req.decode.email;
             if (email !== decodedEmail) {
-                res.status(403).send({ error: true, message: 'Foridden  access' })
+                return res.status(403).send({ error: true, message: 'Foridden  access' }) // add (return ) 12.59
             }
 
 
@@ -185,6 +207,21 @@ async function run() {
             const query = { _id: new ObjectId(id) }
             const result = await carts.deleteOne(query);
             res.send(result);
+        })
+
+        // payment intentd:
+        app.post('/create-payment-intend', async (req, res) => {
+            const { price } = req.body;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ['card'],
+
+            })
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
         })
 
 
