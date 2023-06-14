@@ -152,7 +152,7 @@ async function run() {
 
 
         // admin check api: 
-        app.get('/users/admin/:email', varifyJWT, async (req, res) => {
+        app.get('/users/admin/:email',  async (req, res) => {
             const email = req.params.email;
 
             if (req.decode.email !== email) {
@@ -166,7 +166,7 @@ async function run() {
         })
 
         //instructors check: 
-        app.get('/users/instructor/:email', varifyJWT, async (req, res) => {
+        app.get('/users/instructor/:email', async (req, res) => {
             const email = req.params.email;
 
             if (req.decode.email !== email) {
