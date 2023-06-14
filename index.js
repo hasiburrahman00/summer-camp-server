@@ -1,9 +1,9 @@
+require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
 const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 var jwt = require('jsonwebtoken');
-require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -43,7 +43,8 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
+
 
 
         // --- All Database and collections ---
@@ -51,6 +52,7 @@ async function run() {
         const users_data = database.collection('users_data');
         const courses = database.collection('courses');
         const carts = database.collection('cart');
+        const payments = database.collection('payments');
 
 
         // post all logged in users information
@@ -69,9 +71,29 @@ async function run() {
         // jwt token 
         app.post('/jwt', (req, res) => {
             const user = req.body;
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '10h' })
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
             res.send(token);
         })
+
+        // warning: use verify jwt before using verify admin: 
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decode.email;
+            const query = { email: email }
+            const user = users_data.findOne(query);
+            if (user?.role !== 'admin') {
+                return res.status(403).send({ error: true, message: 'forbidden access' })
+            }
+            next();
+        }
+
+
+
+
+
+
+
+
+
 
         // get all users information:
         app.get('/users', async (req, res) => {
@@ -113,23 +135,47 @@ async function run() {
             res.send(result);
         })
 
-        app.get('/users', async (req, res) => {
-            const query = { role: 'instructor' }
-            const result = await users_data.find(query).toArray();
+        // our all instructors 
+        app.get('/indtructors', async (req, res) => {
+            const query = { status: { $ne: "Deny" } }
+            const result = await courses.find(query).toArray();
             res.send(result)
         })
+
+        // popular instructors api: 
+        app.get('/popularInstructors', async (req, res) => {
+            const result = await courses.find({ status: { $ne: "pending" } }).sort({ enrolledStudents: -1 }).limit(6).toArray();
+            res.send(result);
+        })
+
+
+
 
         // admin check api: 
         app.get('/users/admin/:email', varifyJWT, async (req, res) => {
             const email = req.params.email;
 
             if (req.decode.email !== email) {
-                res.send({ admin: false })
+                return res.send({ admin: false })
             }
 
             const query = { email: email }
             const user = await users_data.findOne(query);
-            const result = { admin: user.role === 'admin' }
+            const result = { admin: user?.role === 'admin' }
+            res.send(result);
+        })
+
+        //instructors check: 
+        app.get('/users/instructor/:email', varifyJWT, async (req, res) => {
+            const email = req.params.email;
+
+            if (req.decode.email !== email) {
+                return res.send({ instructor: false })
+            }
+
+            const query = { email: email }
+            const user = await users_data.findOne(query);
+            const result = { instructor: user?.role === 'instructor' }
             res.send(result);
         })
 
@@ -172,6 +218,11 @@ async function run() {
             res.send(result);
 
         })
+        // popular courses api : 
+        app.get('/popularCourses', async (req, res) => {
+            const result = await courses.find({ status: { $ne: "pending" } }).sort({ enrolledStudents: -1 }).limit(6).toArray();
+            res.send(result);
+        })
 
 
 
@@ -210,9 +261,10 @@ async function run() {
         })
 
         // payment intentd:
-        app.post('/create-payment-intend', async (req, res) => {
+        app.post('/create-payment-intend', varifyJWT, async (req, res) => {
             const { price } = req.body;
-            const amount = price * 100;
+            const amount = parseInt(price * 100);
+            console.log(price);
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: "usd",
@@ -224,7 +276,24 @@ async function run() {
             })
         })
 
+        // payments data: 
+        app.post('/payments', varifyJWT, async (req, res) => {
+            const payment = req.body;
+            console.log(payment?.items)
+            const paymentResult = await payments.insertOne(payment)
+            const query = { _id: { $in: payment?.items.map(item => new ObjectId(item)) } }
+            console.log(query);
+            const deleteCartResult = await carts.deleteMany(query)
+            res.send({ paymentResult, deleteCartResult })
+        })
 
+        // get payment history:
+        app.get('/paymentHistory/:email', async(req, res) => {
+            const email = req.params.email;
+            const result = await payments.find({email}).toArray();
+            console.log("line no 281", email,  result);
+            res.send(result);
+        })
 
 
 
